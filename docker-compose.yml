@@ -17,7 +17,6 @@ services:
 
   redis:
     image: redis:latest
-    container_name: redis
     ports:
       - "6379:6379"
     networks:
@@ -25,7 +24,6 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
-    container_name: kafka
     ports:
       - "9092:9092"
     environment:
@@ -50,7 +48,6 @@ services:
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.6.1
-    container_name: schema-registry
     depends_on:
       kafka:
         condition: service_healthy
@@ -67,7 +64,6 @@ services:
     image: flashsale/flashsale-purchase-processor:latest
     ports:
       - "8083:8080"
-#      - "5005:5005"
     environment: # override 'local' props to use containerized deps while running in the container
       - SPRING_PROFILES_ACTIVE=docker
       - REDIS_HOST=redis # use docker network when running in container

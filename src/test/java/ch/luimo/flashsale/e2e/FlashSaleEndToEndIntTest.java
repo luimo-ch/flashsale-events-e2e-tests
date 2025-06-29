@@ -19,7 +19,7 @@ public class FlashSaleEndToEndIntTest extends IntegrationTestBase {
 
         Awaitility.await()
                 .with().pollInterval(Duration.ofSeconds(5))
-                .atMost(Duration.ofMinutes(3))
+                .atMost(Duration.ofMinutes(5))
                 .untilAsserted(() -> Assertions.fail());
 
     }
