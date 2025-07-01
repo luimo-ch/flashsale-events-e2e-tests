@@ -4,21 +4,18 @@ application:
     flashsale-events: flashsale.events
 
 spring:
-  cloud:
-    gcp:
-      project-id: flashsale-456707
-      secretmanager:
-        enabled: false
-      core:
-        enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 5432
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    bootstrap-servers: localhost:9092
     consumer:
-      group-id: flashsale-event-service-consumer-group
+      group-id: flashsale-events-e2e-tests-consumer-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       properties:
-        schema.registry.url: ${SCHEMA_REGISTRY_URL}
+        schema.registry.url: http://localhost:8081
         specific.avro.reader: true
         auto.offset.reset: earliest
     producer:
@@ -26,13 +23,5 @@ spring:
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
       acks: all
       properties:
-        schema.registry.url: ${SCHEMA_REGISTRY_URL}
+        schema.registry.url: http://localhost:8081
         enable.idempotence: true
-  datasource:
-    url: ${DB_DATASOURCE_URL}
-    username: ${DB_DATASOURCE_USERNAME}
-    password: ${DB_DATASOURCE_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-  sql:
-    init:
-      mode: always

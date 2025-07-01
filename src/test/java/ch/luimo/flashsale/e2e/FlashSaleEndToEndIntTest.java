@@ -1,12 +1,9 @@
 package ch.luimo.flashsale.e2e;
 
-import org.junit.jupiter.api.Assertions;
+import ch.luimo.flashsale.e2e.eventservice.avro.AvroFlashSaleEvent;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
-
-import java.time.Duration;
 
 
 public class FlashSaleEndToEndIntTest extends IntegrationTestBase {
@@ -16,11 +13,12 @@ public class FlashSaleEndToEndIntTest extends IntegrationTestBase {
     @Test
     public void test() {
         LOG.info("Starting test");
+        LOG.info(composeContainer.getServiceHost("schema-registry", 8081));
+        LOG.info("port:" + composeContainer.getServicePort("schema-registry", 8081));
 
-        Awaitility.await()
-                .with().pollInterval(Duration.ofSeconds(5))
-                .atMost(Duration.ofMinutes(5))
-                .untilAsserted(() -> Assertions.fail());
+        AvroFlashSaleEvent event = flashSaleEventOf();
+        flashSaleEventsTestProducer.publishEvent(event);
 
+        assertEventPublished(event.getEventId());
     }
 }

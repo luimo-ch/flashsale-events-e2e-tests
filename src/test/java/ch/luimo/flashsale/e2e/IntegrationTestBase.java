@@ -1,8 +1,12 @@
 package ch.luimo.flashsale.e2e;
 
 import ch.luimo.flashsale.e2e.config.*;
+import ch.luimo.flashsale.e2e.eventservice.avro.AvroEventStatus;
+import ch.luimo.flashsale.e2e.eventservice.avro.AvroFlashSaleEvent;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
@@ -12,124 +16,54 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.*;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.containers.ComposeContainer;
 
 import java.io.File;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 @SpringBootTest
-//@Import({FlashSaleEventsTestProducerConfig.class, GenericTestConsumerConfig.class, KafkaConsumerConfig.class,
-//KafkaProducerConfig.class, RedisConfig.class})
+@Import({FlashSaleEventsTestProducerConfig.class, GenericTestConsumerConfig.class, KafkaConsumerConfig.class,
+        KafkaProducerConfig.class, RedisConfig.class})
 @ActiveProfiles("test")
 public abstract class IntegrationTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(IntegrationTestBase.class);
 
+    private static final int FLASHSALE_EVENTS_API_PORT = 8080;
+    private static final int FLASHSALE_EVENT_SERVICE_PORT = 8082;
+    private static final int FLASHSALE_PURCHASE_PROCESSOR = 8083;
+    private static final int SCHEMA_REGISTRY = 8081;
+    private static final int KAFKA_PORT = 9092;
+
     @Value("${application.kafka-topics.flashsale-events}")
     protected String flashsaleEventsTopic;
 
-    protected static final PostgreSQLContainer<?> mysqlContainer = new PostgreSQLContainer<>(DockerImageName.parse("postgres:15.4"))
-            .withDatabaseName("testdb")
-            .withUsername("testuser")
-            .withPassword("testpass");
-
-    private static final GenericContainer<?> REDIS_CONTAINER = new GenericContainer<>("redis:7.0.12")
-            .withExposedPorts(6379);
-
-    public static final String CONFLUENT_PLATFORM_VERSION = "7.4.0";
-    private static final DockerImageName KAFKA_IMAGE = DockerImageName.parse("confluentinc/cp-kafka")
-//            .asCompatibleSubstituteFor("apache/kafka")
-            .withTag(CONFLUENT_PLATFORM_VERSION);
-    private static final DockerImageName SCHEMA_REGISTRY_IMAGE = DockerImageName.parse("confluentinc/cp-schema-registry")
-            .withTag(CONFLUENT_PLATFORM_VERSION);
-    private static final Network SHARED_NETWORK = Network.newNetwork();
-
-//    private static final KafkaContainer KAFKA_CONTAINER = new KafkaContainer(KAFKA_IMAGE)
-//            .withNetwork(SHARED_NETWORK)
-//            .withKraft()
-//            .withNetworkAliases("kafka")
-//            .withEnv("KAFKA_NODE_ID", "1")
-//            .withEnv("KAFKA_PROCESS_ROLES", "broker, controller")
-//            .withEnv("KAFKA_CONTROLLER_QUORUM_VOTERS", "1@kafka:9093")
-//            .withEnv("KAFKA_CONTROLLER_LISTENER_NAMES", "CONTROLLER")
-//            .withEnv("KAFKA_LISTENERS", "PLAINTEXT://:9092,BROKER://:9093,CONTROLLER://:9094") // Listen on all interfaces
-//            .withEnv("KAFKA_ADVERTISED_LISTENERS", "PLAINTEXT://kafka:19092")
-//            .withEnv("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT")
-//            .withEnv("KAFKA_INTER_BROKER_LISTENER_NAME", "PLAINTEXT")
-//            .withEnv("KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR", "1");
-
-//    private static final ComposeContainer() {
-//
-//    }
-
-    private static final ComposeContainer composeContainer = new ComposeContainer(
-            new File("docker-compose.yml")
-    )
+    protected static final ComposeContainer composeContainer = new ComposeContainer(
+            new File("docker-compose.yml"))
             .withLocalCompose(true)
             .withTailChildContainers(true)
             .withPull(false)
-            .withExposedService("kafka", 9092);
+            .withExposedService("schema-registry", SCHEMA_REGISTRY);
 
-//    private static final GenericContainer<?> SCHEMA_REGISTRY = new GenericContainer<>(SCHEMA_REGISTRY_IMAGE)
-//            .withExposedPorts(8085)
-//            .withNetwork(SHARED_NETWORK)
-//            .withNetworkAliases("schema-registry")
-//            .withEnv("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
-//            .withEnv("SCHEMA_REGISTRY_LISTENERS", "http://0.0.0.0:8085")
-//            .withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", "PLAINTEXT://kafka:19092")
-//            .withEnv("SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL", "PLAINTEXT")
-//            .waitingFor(Wait.forHttp("/subjects").forStatusCode(200))
-//            .dependsOn(KAFKA_CONTAINER);
+    @Autowired
+    protected GenericTestConsumerConfig.GenericTestConsumer genericTestConsumer;
 
-    private static GenericContainer<?> eventsApi;
-
-//    @Autowired
-//    protected GenericTestConsumerConfig.GenericTestConsumer genericTestConsumer;
-//
-//    @Autowired
-//    protected FlashSaleEventsTestProducerConfig.FlashSaleEventsTestProducer flashSaleEventsTestProducer;
+    @Autowired
+    protected FlashSaleEventsTestProducerConfig.FlashSaleEventsTestProducer flashSaleEventsTestProducer;
 
     @BeforeAll
     static void startContainers() {
         composeContainer.start();
-//        mysqlContainer.start();
-//        KAFKA_CONTAINER.start();
-//        SCHEMA_REGISTRY.start();
-//        REDIS_CONTAINER.start();
 
-
-
-        // these props are only set for this JVM!
-//        System.setProperty("spring.datasource.url", mysqlContainer.getJdbcUrl());
-//        System.setProperty("spring.datasource.username", mysqlContainer.getUsername());
-//        System.setProperty("spring.datasource.password", mysqlContainer.getPassword());
-//        System.setProperty("KAFKA_BOOTSTRAP_SERVERS", KAFKA_CONTAINER.getBootstrapServers());
-//        System.setProperty("SCHEMA_REGISTRY_URL", "http://schema-registry:" + SCHEMA_REGISTRY.getFirstMappedPort());
-//        System.setProperty("spring.data.redis.host", REDIS_CONTAINER.getHost());
-//        System.setProperty("spring.data.redis.port", REDIS_CONTAINER.getMappedPort(6379).toString());
-
-//        LOG.info("Starting Kafka container at {}", KAFKA_CONTAINER.getBootstrapServers());
-//        LOG.info("Starting MySQL container at {}", mysqlContainer.getJdbcUrl());
-//        LOG.info("Started Redis container at {}", REDIS_CONTAINER.getHost() + ":" + REDIS_CONTAINER.getMappedPort(6379));
-
-//        createTestKafkaTopic("flashsale.purchase.requests", KAFKA_CONTAINER.getBootstrapServers(), false);
-//        createTestKafkaTopic("flashsale.events", KAFKA_CONTAINER.getBootstrapServers(), true);
-
-//        LOG.info("bootstrap servers:{}", KAFKA_CONTAINER.getBootstrapServers());
-//        String port = KAFKA_CONTAINER.getBootstrapServers().split(":")[1];
-//        eventsApi = new GenericContainer<>("flashsale/flashsale-events-api:local")
-//                .withExposedPorts(8081)
-//                .withNetwork(SHARED_NETWORK)
-//                .withEnv("KAFKA_BOOTSTRAP_SERVERS", "kafka:19092")
-//                .withEnv("SCHEMA_REGISTRY_URL", "http://schema-registry:8085")
-//                .withEnv("REDIS_HOST", REDIS_CONTAINER.getHost())
-//                .withEnv("REDIS_PORT", REDIS_CONTAINER.getMappedPort(6379).toString());
-//                .waitingFor(Wait.forHttp("/actuator/health").forStatusCode(200));
-
-//        eventsApi.start();
+        createTestKafkaTopic("flashsale.purchase.requests", "localhost:9092", false);
+        createTestKafkaTopic("flashsale.events", "localhost:9092", true);
     }
 
     private static void createTestKafkaTopic(String topicName, String bootstrapServers, boolean logCompaction) {
@@ -145,24 +79,46 @@ public abstract class IntegrationTestBase {
         }
     }
 
+    protected void assertEventPublished(String expectedEventId) {
+        genericTestConsumer.subscribe(flashsaleEventsTopic);
+        LOG.info("Starting await for event with ID: {}", expectedEventId);
+        Awaitility.await()
+                .atMost(20, TimeUnit.SECONDS)
+                .with().pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() -> {
+                    ConsumerRecords<String, String> records = genericTestConsumer.poll(Duration.ofMillis(500));
+                    for (var record : records) {
+                        LOG.info("Successfully received record: key = {}, value = {}", record.key(), record.value());
+                        assertThat(record.key()).isEqualTo(expectedEventId);
+                    }
+                });
+        LOG.info("Await finished for event: {}", expectedEventId);
+    }
+
+    protected String getBaseUrl(String service, int port) {
+        return "http://localhost:" + composeContainer.getServicePort(service, port);
+    }
+
+    protected void printUrls() {
+        LOG.info(getBaseUrl("kafka", 9092));
+    }
+
+    protected AvroFlashSaleEvent flashSaleEventOf() {
+        return AvroFlashSaleEvent.newBuilder()
+                .setEventId(UUID.randomUUID().toString())
+                .setEventName("test event")
+                .setStartTime(Instant.now())
+                .setDuration(3600)
+                .setProductId(UUID.randomUUID().toString())
+                .setSellerId(UUID.randomUUID().toString())
+                .setStockQuantity(1000)
+                .setMaxPerCustomer(10)
+                .setEventStatus(AvroEventStatus.STARTED)
+                .build();
+    }
 
     @AfterAll
     public static void tearDown() {
         composeContainer.stop();
-//        if (SCHEMA_REGISTRY != null) {
-//            SCHEMA_REGISTRY.stop();
-//        }
-//        if (KAFKA_CONTAINER != null) {
-//            KAFKA_CONTAINER.stop();
-//        }
-//        if (mysqlContainer.isRunning()) {
-//            mysqlContainer.stop();
-//        }
-//        if (REDIS_CONTAINER != null) {
-//            REDIS_CONTAINER.stop();
-//        }
-//        if (eventsApi != null) {
-//            eventsApi.stop();
-//        }
     }
 }
