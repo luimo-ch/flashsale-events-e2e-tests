@@ -3,10 +3,12 @@ package ch.luimo.flashsale.e2e;
 import ch.luimo.flashsale.e2e.config.*;
 import ch.luimo.flashsale.e2e.eventservice.avro.AvroEventStatus;
 import ch.luimo.flashsale.e2e.eventservice.avro.AvroFlashSaleEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.awaitility.Awaitility;
+import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
@@ -14,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.ComposeContainer;
@@ -28,19 +31,23 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-@SpringBootTest
-@Import({FlashSaleEventsTestProducerConfig.class, GenericTestConsumerConfig.class, KafkaConsumerConfig.class,
-        KafkaProducerConfig.class, RedisConfig.class})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@Import({FlashSaleEventsTestProducerConfig.class,
+        GenericTestConsumerConfig.class,
+        KafkaConsumerConfig.class,
+        RedisConfig.class,
+        TestRestTemplateConfig.class
+})
 @ActiveProfiles("test")
 public abstract class IntegrationTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(IntegrationTestBase.class);
 
-    private static final int FLASHSALE_EVENTS_API_PORT = 8080;
-    private static final int FLASHSALE_EVENT_SERVICE_PORT = 8082;
-    private static final int FLASHSALE_PURCHASE_PROCESSOR = 8083;
-    private static final int SCHEMA_REGISTRY = 8081;
-    private static final int KAFKA_PORT = 9092;
+    protected static final int FLASHSALE_EVENTS_API_PORT = 8080;
+    protected static final int FLASHSALE_EVENT_SERVICE_PORT = 8082;
+    protected static final int FLASHSALE_PURCHASE_PROCESSOR = 8083;
+    protected static final int SCHEMA_REGISTRY = 8081;
+    protected static final int KAFKA_PORT = 9092;
 
     @Value("${application.kafka-topics.flashsale-events}")
     protected String flashsaleEventsTopic;
@@ -56,7 +63,10 @@ public abstract class IntegrationTestBase {
     protected GenericTestConsumerConfig.GenericTestConsumer genericTestConsumer;
 
     @Autowired
-    protected FlashSaleEventsTestProducerConfig.FlashSaleEventsTestProducer flashSaleEventsTestProducer;
+    protected TestRestTemplate testRestTemplate;
+
+    @Autowired
+    protected ObjectMapper objectMapper;
 
     @BeforeAll
     static void startContainers() {
@@ -77,6 +87,14 @@ public abstract class IntegrationTestBase {
         } catch (Exception e) {
             throw new RuntimeException("Failed to create topic " + topicName, e);
         }
+    }
+
+    protected void pollUntilAsserted(ThrowingRunnable runnable) {
+        Awaitility.await()
+                .pollDelay(Duration.ofSeconds(3))
+                .atMost(10, TimeUnit.SECONDS)
+                .with().pollInterval(Duration.ofMillis(1000))
+                .untilAsserted(runnable);
     }
 
     protected void assertEventPublished(String expectedEventId) {
@@ -101,20 +119,6 @@ public abstract class IntegrationTestBase {
 
     protected void printUrls() {
         LOG.info(getBaseUrl("kafka", 9092));
-    }
-
-    protected AvroFlashSaleEvent flashSaleEventOf() {
-        return AvroFlashSaleEvent.newBuilder()
-                .setEventId(UUID.randomUUID().toString())
-                .setEventName("test event")
-                .setStartTime(Instant.now())
-                .setDuration(3600)
-                .setProductId(UUID.randomUUID().toString())
-                .setSellerId(UUID.randomUUID().toString())
-                .setStockQuantity(1000)
-                .setMaxPerCustomer(10)
-                .setEventStatus(AvroEventStatus.STARTED)
-                .build();
     }
 
     @AfterAll
