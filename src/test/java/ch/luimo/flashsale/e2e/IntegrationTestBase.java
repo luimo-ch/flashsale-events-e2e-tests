@@ -32,8 +32,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@Import({FlashSaleEventsTestProducerConfig.class,
-        GenericTestConsumerConfig.class,
+@Import({GenericTestConsumerConfig.class,
         KafkaConsumerConfig.class,
         RedisConfig.class,
         TestRestTemplateConfig.class

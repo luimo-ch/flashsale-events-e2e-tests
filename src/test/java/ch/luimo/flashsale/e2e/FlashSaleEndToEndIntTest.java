@@ -20,7 +20,6 @@ public class FlashSaleEndToEndIntTest extends IntegrationTestBase {
 
     @Test
     public void test() {
-        // Create request payload
         CreateFlashSaleEventRequest request = new CreateFlashSaleEventRequest();
         request.setEventName("Test Flash Sale");
         request.setStartTime(OffsetDateTime.now());
@@ -41,7 +40,7 @@ public class FlashSaleEndToEndIntTest extends IntegrationTestBase {
         assertThat(createEventResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(createEventResponse.getBody()).isNotNull();
         String flashSaleEventId = createEventResponse.getBody();
-        System.out.println("Test event created with id: " + createEventResponse.getBody());
+        LOG.info("Test event created with id: {}", createEventResponse.getBody());
 
         // call scan started events
         ResponseEntity<Void> scanStartedEventsResponse = testRestTemplate.getForEntity(scanStartedEventsUrl, Void.class);
