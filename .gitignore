@@ -33,5 +33,7 @@ build/
 ### VS Code ###
 .vscode/
 
+.mvn
+
 ### GOOGLE ###
 google-credentials.json
