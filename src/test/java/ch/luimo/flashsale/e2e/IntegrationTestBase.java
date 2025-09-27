@@ -1,8 +1,6 @@
 package ch.luimo.flashsale.e2e;
 
 import ch.luimo.flashsale.e2e.config.*;
-import ch.luimo.flashsale.e2e.eventservice.avro.AvroEventStatus;
-import ch.luimo.flashsale.e2e.eventservice.avro.AvroFlashSaleEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -23,10 +21,8 @@ import org.testcontainers.containers.ComposeContainer;
 
 import java.io.File;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;

@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.0</version>
+        <version>3.4.4</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -19,8 +19,14 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <surefire.argLine></surefire.argLine>
-        <failsafe.argLine></failsafe.argLine>
+        <test.jvm.args>-XX:+EnableDynamicAgentLoading -Xshare:off</test.jvm.args>
+
+        <!-- pre-test building of images -->
+        <event.service.dir>../flashsale-event-service</event.service.dir>
+        <events.api.dir>../flashsale-events-api</events.api.dir>
+        <purchase.processor.dir>../flashsale-purchase-processor</purchase.processor.dir>
+        <flashsale.image.tag>latest</flashsale.image.tag>
+        <skip.image.build>false</skip.image.build>
     </properties>
 
     <repositories>
@@ -81,11 +87,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -119,18 +120,90 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>build-event-service-image</id>
+                        <phase>pre-integration-test</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <workingDirectory>${event.service.dir}</workingDirectory>
+                            <executable>mvn</executable>
+                            <skip>${skip.image.build}</skip>
+                            <arguments>
+                                <argument>-q</argument>
+                                <argument>-DskipTests</argument>
+                                <argument>-Djib.to.image=flashsale/flashsale-event-service:${flashsale.image.tag}</argument>
+                                <argument>jib:dockerBuild</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>build-events-api-image</id>
+                        <phase>pre-integration-test</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <workingDirectory>${events.api.dir}</workingDirectory>
+                            <executable>mvn</executable>
+                            <skip>${skip.image.build}</skip>
+                            <arguments>
+                                <argument>-q</argument>
+                                <argument>-DskipTests</argument>
+                                <argument>-Djib.to.image=flashsale/flashsale-events-api:${flashsale.image.tag}</argument>
+                                <argument>jib:dockerBuild</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>build-purchase-processor-image</id>
+                        <phase>pre-integration-test</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <workingDirectory>${purchase.processor.dir}</workingDirectory>
+                            <executable>mvn</executable>
+                            <skip>${skip.image.build}</skip>
+                            <arguments>
+                                <argument>-q</argument>
+                                <argument>-DskipTests</argument>
+                                <argument>-Djib.to.image=flashsale/flashsale-purchase-processor:${flashsale.image.tag}</argument>
+                                <argument>jib:dockerBuild</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                </executions>
+            </plugin>
+
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>${surefire.argLine} -XX:+EnableDynamicAgentLoading -Xshare:off</argLine>
+                    <argLine>${test.jvm.args}</argLine>
+                    <skipTests>true</skipTests>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <argLine>${failsafe.argLine} -XX:+EnableDynamicAgentLoading -Xshare:off</argLine>
+                    <argLine>${test.jvm.args}</argLine>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>integration-tests</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

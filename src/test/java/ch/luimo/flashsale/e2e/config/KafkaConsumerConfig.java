@@ -1,6 +1,6 @@
 package ch.luimo.flashsale.e2e.config;
 
-import ch.luimo.flashsale.e2e.eventservice.avro.AvroFlashSaleEvent;
+import ch.luimo.flashsale.eventservice.avro.AvroFlashSaleEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
