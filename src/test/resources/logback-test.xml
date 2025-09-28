@@ -1,0 +1,33 @@
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <property name="CONSOLE_LOG_PATTERN" value="%d{HH:mm:ss.SSS} %-5level %logger{24} - %msg%n"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="TESTCONTAINERS" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %replace(%msg){'^\[/[^\]]+] STDOUT: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+[A-Z]+\s+\d+\s+---\s+\[([^\]]+)]\s+\[[^\]]+]\s+[^:]+:\s+(.*)', '[$1] $2'}%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <logger name="org.testcontainers.containers.ComposeDelegate" level="INFO" additivity="false">
+        <appender-ref ref="TESTCONTAINERS"/>
+    </logger>
+
+    <logger name="org.testcontainers.containers.GenericContainer" level="WARN"/>
+    <logger name="org.testcontainers.containers.output.Slf4jLogConsumer" level="WARN"/>
+    <logger name="redis.clients" level="WARN"/>
+    <logger name="org.apache.kafka" level="WARN"/>
+    <logger name="io.confluent" level="WARN"/>
+
+    <logger name="org.testcontainers" level="INFO"/>
+</configuration>
