@@ -136,6 +136,7 @@
                                 <argument>-q</argument>
                                 <argument>-DskipTests</argument>
                                 <argument>-Djib.to.image=flashsale/flashsale-event-service:${flashsale.image.tag}</argument>
+                                <argument>package</argument>
                                 <argument>jib:dockerBuild</argument>
                             </arguments>
                         </configuration>
@@ -153,6 +154,7 @@
                                 <argument>-q</argument>
                                 <argument>-DskipTests</argument>
                                 <argument>-Djib.to.image=flashsale/flashsale-events-api:${flashsale.image.tag}</argument>
+                                <argument>package</argument>
                                 <argument>jib:dockerBuild</argument>
                             </arguments>
                         </configuration>
@@ -170,6 +172,7 @@
                                 <argument>-q</argument>
                                 <argument>-DskipTests</argument>
                                 <argument>-Djib.to.image=flashsale/flashsale-purchase-processor:${flashsale.image.tag}</argument>
+                                <argument>package</argument>
                                 <argument>jib:dockerBuild</argument>
                             </arguments>
                         </configuration>
